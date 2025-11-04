@@ -93,47 +93,25 @@ class NPCDataGenerator:
     @torch.no_grad()
     def generate_response(self, prompt: str) -> str:
         """Generuje odpowiedź od modelu nauczyciela z wysoką temperaturą."""
-        try:
-            # Prompty z Excel mogą być długie - zwiększamy max_length
-            inputs = self.tokenizer(
-                prompt,
-                return_tensors="pt",
-                padding=True,
-                truncation=True,
-                max_length=2048  # Zwiększone dla dłuższych promptów z Excel
-            ).to(self.model.device)
-            
-            # FIX: Bezpieczne parametry aby uniknąć CUDA assert errors
-            safe_temperature = min(self.teacher_config.get('temperature', 1.0), 1.2)
-            
-            outputs = self.model.generate(
-                input_ids=inputs['input_ids'],
-                attention_mask=inputs['attention_mask'],
-                max_new_tokens=self.teacher_config.get('max_new_tokens', 128),
-                temperature=safe_temperature,
-                top_p=min(self.teacher_config.get('top_p', 0.9), 0.9),
-                top_k=50,
-                do_sample=True,
-                pad_token_id=self.tokenizer.pad_token_id,
-                eos_token_id=self.tokenizer.eos_token_id,
-                repetition_penalty=1.1,
-                renormalize_logits=True,  # Zapobiega NaN
-                no_repeat_ngram_size=3,  # Zapobiega zapętleniom
-            )
-        except RuntimeError as e:
-            if "CUDA" in str(e) or "assert" in str(e):
-                print(f"⚠️  CUDA error, fallback to greedy decoding...")
-                # Fallback: bezpieczna generacja bez sampling
-                outputs = self.model.generate(
-                    input_ids=inputs['input_ids'],
-                    attention_mask=inputs['attention_mask'],
-                    max_new_tokens=min(self.teacher_config.get('max_new_tokens', 128), 64),
-                    do_sample=False,  # Greedy
-                    pad_token_id=self.tokenizer.pad_token_id,
-                    eos_token_id=self.tokenizer.eos_token_id,
-                )
-            else:
-                raise
+        # Prompty z Excel mogą być długie - zwiększamy max_length
+        inputs = self.tokenizer(
+            prompt,
+            return_tensors="pt",
+            padding=True,
+            truncation=True,
+            max_length=2048  # Zwiększone dla dłuższych promptów z Excel
+        ).to(self.model.device)
+        
+        # FIX: Bezpieczne parametry - używamy TYLKO greedy decoding
+        # Sampling (temperature > 0) powoduje CUDA assert errors na niektórych modelach
+        outputs = self.model.generate(
+            input_ids=inputs['input_ids'],
+            attention_mask=inputs['attention_mask'],
+            max_new_tokens=self.teacher_config.get('max_new_tokens', 128),
+            do_sample=False,  # GREEDY - najstabilniejsze
+            pad_token_id=self.tokenizer.pad_token_id,
+            eos_token_id=self.tokenizer.eos_token_id,
+        )
         
         # Dekodowanie tylko wygenerowanej części
         generated_text = self.tokenizer.decode(
