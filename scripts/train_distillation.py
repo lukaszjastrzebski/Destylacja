@@ -269,11 +269,18 @@ class NPCDistillation:
         
         return split_dataset
     
-    def train(self, dataset_path: str = "data/teacher_dataset.jsonl"):
+    def train(self, dataset_path: str = None):
         """Uruchamia proces destylacji."""
         print("\n" + "=" * 60)
         print("Rozpoczęcie treningu destylacji")
         print("=" * 60)
+        
+        # Użyj ścieżki z configu jeśli nie podano jawnie
+        if dataset_path is None:
+            data_config = self.config.get('data_generation', {})
+            output_dir = data_config.get('output_dir', 'data')
+            output_file = data_config.get('output_file', 'teacher_dataset.jsonl')
+            dataset_path = str(Path(output_dir) / output_file)
         
         # Załaduj dataset
         dataset = self.load_dataset(dataset_path)
