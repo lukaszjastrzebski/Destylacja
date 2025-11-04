@@ -1,0 +1,50 @@
+# Konfiguracja TEST - Małe modele dla PC z małym GPU
+# Teacher: TinyLlama-1.1B (zamiast 11B)
+# Student: Qwen2-0.5B (super mały)
+# NIE WYMAGA LOGOWANIA!
+
+teacher_model:
+  name: "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+  load_in_8bit: false  # Wyłączone - model mały, niepotrzebne
+  max_new_tokens: 256
+  temperature: 1.0
+  top_p: 0.85
+
+student_model:
+  name: "Qwen/Qwen2-0.5B-Instruct"
+  use_lora: true
+  lora_r: 32
+  lora_alpha: 64
+  lora_dropout: 0.05
+  target_modules:
+    - "q_proj"
+    - "v_proj"
+
+data_generation:
+  num_samples: 2878
+  output_dir: "data"
+  output_file: "teacher_dataset.jsonl"
+  excel_file: "prompty.xlsx"
+
+training:
+  output_dir: "models/tinyllama_to_qwen_npc"
+  num_train_epochs: 3
+  per_device_train_batch_size: 4
+  gradient_accumulation_steps: 2
+  learning_rate: 0.0002
+  warmup_steps: 100
+  logging_steps: 10
+  save_steps: 500
+  eval_steps: 500
+  save_total_limit: 2
+  fp16: true
+  gradient_checkpointing: true
+  optim: "adamw_torch"
+  max_grad_norm: 1.0
+  kl_weight: 0.5
+  ce_weight: 0.5
+
+wandb:
+  enabled: false
+  project: "llm-to-npc-tiny"
+  run_name: "tinyllama-to-qwen0.5b"
