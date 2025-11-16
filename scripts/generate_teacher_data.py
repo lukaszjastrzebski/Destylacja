@@ -107,13 +107,16 @@ class NPCDataGenerator:
             max_length=2048  # Zwiększone dla dłuższych promptów z Excel
         ).to(self.model.device)
         
-        # FIX: Bezpieczne parametry - używamy TYLKO greedy decoding
-        # Sampling (temperature > 0) powoduje CUDA assert errors na niektórych modelach
+        # FIX: Sampling z temperaturą dla różnorodnych odpowiedzi
+        # To KLUCZOWA zmiana - greedy generuje nudne, powtarzalne odpowiedzi!
         outputs = self.model.generate(
             input_ids=inputs['input_ids'],
             attention_mask=inputs['attention_mask'],
             max_new_tokens=self.teacher_config.get('max_new_tokens', 128),
-            do_sample=False,  # GREEDY - najstabilniejsze
+            do_sample=True,              # ← SAMPLING dla diversity
+            temperature=0.9,             # ← Kontrolowana kreatywność
+            top_p=0.9,                   # ← Nucleus sampling
+            top_k=50,                    # ← Ogranicz do top 50 tokenów
             pad_token_id=self.tokenizer.pad_token_id,
             eos_token_id=self.tokenizer.eos_token_id,
         )
